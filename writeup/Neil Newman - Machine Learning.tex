@@ -1,0 +1,72 @@
+\documentclass{article} % For LaTeX2e
+\usepackage{nips14submit_e,times}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{graphicx}
+\usepackage[super]{nth}
+%\documentstyle[nips14submit_09,times,art10]{article} % For LaTeX 2.09
+
+\title{CPSC 536N Project: Gossip Protocols with Random Linear Network Coding}
+\author{
+Neil~Newman\\
+81435142\\
+Department of Computer Science\\
+University of British Columbia\\
+Vancouver, BC V6T 1Z4 \\
+\texttt{newmanne@cs.ubc.ca}
+}
+\newcommand{\fix}{\marginpar{FIX}}
+\newcommand{\new}{\marginpar{NEW}}
+
+\def\numNodes{\textit{n}\,}
+\def\graph{\textit{G(t)}\,}
+\def\graphtime{\textit{t}\,}
+\def\numMessages{\textit{k}\,}
+
+\nipsfinalcopy % Uncomment for camera-ready version
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+''The goal of gossip protocols is to make all messages known to all nodes in the network using as little time as possible (in expectation and with high probability).``
+
+\subsection{Model of Network and Communication}
+We will use the model from \cite{haeupler2011analyzing}, which is as follows: There are \numNodes nodes in the network. A network is a graph \graph that can vary with time \graphtime and is either directed or undirected. An edge in \graph from any two nodes \textit{a} and \textit{b} represents a link through which communication can take place in round \graphtime; if the edge is directed it means that communication can only occur in the direction of the edge. We will assume that \graph is connected at every \graphtime, however this requirement can be weakened. 
+
+\subsection{Message structure}
+There are \numMessages distributed over the network (see \ref{subsec:startingconditions} for details on the ways in which we consider the messages to be distributed). 
+
+\subsection{Additional assumptions}
+Packets are never dropped. All packets have the same size. 
+
+\subsection{Modes of communication}
+We allow the following four modes of communication:
+\begin{itemize}
+\item \texttt{BROADCAST} A node sends to all of its neighbours
+\item \texttt{PUSH} A node sends to one neighbour chosen uniformly at random
+\item \texttt{PULL} A node chooses a neighbour uniformly at random and receives a message from the neighbour
+\item \texttt{EXCHANGE} A node chooses a neighbour uniformly at random and they each send each send each other a message
+\end{itemize}
+The choice of what packet to send is never conditioned on the who will receive the packet.
+
+\subsection{Starting conditions}\label{subsec:startingconditions}
+We consider the following starting conditions:
+\begin{itemize}
+\item \texttt{DISTRIBUTED} Each node knows a single, unique message
+\item \texttt{SINGLE} A single node knows every message, other nodes know nothing
+\end{itemize}
+
+\bibliography{nips}
+
+%\paragraph{}
+%I propose doing my project on the topic of \emph{Gossip / Epidemic Protocols}. These protocols are used to spread information that is initially known only to some nodes throughout a network, and they are especially well suited to cases where the global network structure is unknown or dynamic. The algorithms resemble the way that humans spread rumors or how a virus spreads. Every round, a series of pairwise interactions occur in which a node chooses another node at random and exchanges information with it. These methods can be applied to database replication \cite{demers1987epidemic}.
+%\paragraph{}
+%One issue with gossip protocols is that if the goal is to spread multiple messages in parallel, nodes need to choose which information they send in each interaction, and it is possible for some messages to become widely spread while others remain rare, so that the stopping time (when everyone knows everything) is dominated by the time it takes to propogate rare messages. This can be circumvented by using gossip protocol based on \emph{Random Linear Network Coding} (RLNC). In this protocol, nodes exchange messages which are random linear combinations of the original messages, with the coefficients chosen from a Galois field. The original messages can be recovered using Gaussian elimination once enough linearly independent coefficient vectors have been received.
+%\paragraph{}
+%For my project, I plan to read \emph{Analyzing network coding gossip made easy} and \emph{Epidemic algorithms for replicated database maintenance}. I plan to implement the gossip algorithm with RLNC and perform experiments to measure the stopping time. I will investigate the performance on static graphs vs dynamic graphs, on different starting knowledge configurations, and I will investigate the impact of the different ways in which nodes can connect with each other: broadcasting, pushing, pulling, and exchanging. I will compare my results with the theoretical stopping times given in \cite{haeupler2011analyzing}.
+
+
+
+\end{document}
