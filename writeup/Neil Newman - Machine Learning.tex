@@ -4,6 +4,9 @@
 \usepackage{url}
 \usepackage{graphicx}
 \usepackage[super]{nth}
+\usepackage{todonotes}
+\usepackage{amsfonts}
+
 %\documentstyle[nips14submit_09,times,art10]{article} % For LaTeX 2.09
 
 \title{CPSC 536N Project: Gossip Protocols with Random Linear Network Coding}
@@ -22,6 +25,8 @@ Vancouver, BC V6T 1Z4 \\
 \def\graph{\textit{G(t)}\,}
 \def\graphtime{\textit{t}\,}
 \def\numMessages{\textit{k}\,}
+\def\RLNC{\textit{RLNC}\,}
+\def\fieldSize{\textit{q}\,}
 
 \nipsfinalcopy % Uncomment for camera-ready version
 
@@ -30,7 +35,7 @@ Vancouver, BC V6T 1Z4 \\
 \maketitle
 
 \section{Introduction}
-''The goal of gossip protocols is to make all messages known to all nodes in the network using as little time as possible (in expectation and with high probability).``
+''The goal of gossip protocols is to make all messages known to all nodes in the network using as little time as possible (in expectation and with high probability).`` Random Linear Network Coding (\RLNC). Structured multi-cast relies on a known, non-changing network topology. 
 
 \subsection{Model of Network and Communication}
 We will use the model from \cite{haeupler2011analyzing}, which is as follows: There are \numNodes nodes in the network. A network is a graph \graph that can vary with time \graphtime and is either directed or undirected. An edge in \graph from any two nodes \textit{a} and \textit{b} represents a link through which communication can take place in round \graphtime; if the edge is directed it means that communication can only occur in the direction of the edge. We will assume that \graph is connected at every \graphtime, however this requirement can be weakened. 
@@ -51,12 +56,45 @@ We allow the following four modes of communication:
 \end{itemize}
 The choice of what packet to send is never conditioned on the who will receive the packet.
 
+\subsection{Timing models}
+Synchronous: every node is activated every round. Discrete.
+Asynchrounous: TODO:
+
 \subsection{Starting conditions}\label{subsec:startingconditions}
 We consider the following starting conditions:
 \begin{itemize}
 \item \texttt{DISTRIBUTED} Each node knows a single, unique message
 \item \texttt{SINGLE} A single node knows every message, other nodes know nothing
 \end{itemize}
+
+\subsection{Graph types}
+\begin{itemize}
+\item \texttt{COMPLETE} Every node is connected to every other node
+\item \texttt{ADVERSERIAL} sadfa\todo{stuff}
+\end{itemize}
+
+\subsection{RLNC Algorithm}
+\paragraph{Preliminaries}
+Packets are vectors over a finite field $\mathbb{F}_{\fieldSize}$, where the size of the field, \fieldSize, is an arbitrary prime or prime power. There are \numMessages messages, $\vec{m_{1}}$ that are vectors from $\mathbb{F}_{\fieldSize}^{l}$. Packets are of the form ($\vec{\mu}, \vec{m}$), where $\vec{m} = \sum_{i=1}^{\numMessages} \mu_i\vec{m_i} \in \mathbb{F}_{\fieldSize}^{l}$ and $\vec{\mu} = (\mu_1,...,\mu_k) \in \mathbb{F}_{\fieldSize}^{\numMessages}$ is the coefficient vector. Note that if a node ever knows enough coefficient vectors such that the span of these vectors is $\mathbb{F}_{\fieldSize}^{\numMessages}$ then Gaussian elimination can be used to reconstruct all of the messages. Therefore, a minium of \numMessages packets with linearly independent coefficients are needed.
+\paragraph{Algorithm}
+Every node \textit{v} keeps a subspace $X_v$ that is the span of all of the coefficient vectors it currently knows. When a packet needs to be chosen to send, a node chooses a packet uniformly at random from $X_v$. When a packet is received, $X_v$ is recomputed. If $X_v = \mathbb{F}_{\fieldSize}^{\numMessages}$ then a node can decode messages. When this is true for every node, the algorithm is considered to have stopped. 
+
+
+\subsection{Summary of theoretical results}
+
+\subsection{Practical details}
+Experiments were performed using \textit{python}. The \textit{networkx} library was used to generate graphs.
+
+\subsection{Results}
+\begin{figure}
+\centering
+\missingfigure{Runtimes}
+\label{fig:runtimes}
+\end{figure} 
+
+\subsection{Discussion}
+
+\subsection{Conclusions}
 
 \bibliography{nips}
 
