@@ -11,44 +11,81 @@ EXCHANGE = 2
 BROADCAST = 3
 
 FIELD_SIZE = 2
-NUM_MESSAGES = 5
-MESSAGE_LENGTH = 10
-NUM_NODES = 10
+NUM_NODES = 100
 
 class RLNCNode:
-	def __init__(self):
-		self.messages = np.array([0, MESSAGE_LENGTH]) # A matrix where every row is a message
-		self.coefficients = np.array([[0, NUM_MESSAGES]]) # A matrix where every row is coefficients for a message
+	def __init__(self, identifier):
+		self.messages = np.array([]) # A matrix where every row is a message
+		self.coefficients = np.array([]) # A matrix where every row is coefficients for a message
+		self.independent_coeffs = np.array([])
+		self.independent_messages = np.array([])
+		self.identifier = identifier
 
 	def receive(self, message):
-		np.append(self.coefficients, message.coefficients, axis=0)
-		np.append(self.messages, message.message, axis=0)
+		old_rank = self.rank()
+		if self.messages.size == 0:
+			self.coefficients = np.array([message.coefficients])
+			self.messages = np.array([message.message])
+		else:
+			self.coefficients = np.concatenate((self.coefficients, np.array([message.coefficients])), axis=0)
+			self.messages = np.concatenate((self.messages, np.array([message.message])), axis=0)
+		new_rank = self.rank()
+		if old_rank != new_rank: # Must have added a linearly independent equation!
+			if self.independent_coeffs.size == 0:
+				self.independent_coeffs = np.array([message.coefficients])
+				self.independent_messages = np.array([message.message])
+			else:
+				self.independent_coeffs = np.concatenate((self.independent_coeffs, np.array([message.coefficients])), axis=0)
+				self.independent_messages = np.concatenate((self.independent_messages, np.array([message.message])), axis=0)
 
-	def can_decode():
-		numpy.linalg.matrix_rank(self.coefficients) == NUM_MESSAGES
+	def rank(self):
+		return compute_rank(self.coefficients)
 
-	def get_random_message():
-		rand_coefficients = np.random.randint(0, FIELD_SIZE, (self.messages.shape[0], 1)) # One random coefficient for each message I know about
-		messsage = np.dot(rand_coefficients, self.messages)
+	def can_decode(self):
+		return self.rank() == NUM_MESSAGES
 
-		for i, message in enumerate(self.messages):
-			m_coefficients[i] = numpy.random.randint(0, FIELD_SIZE)
-			m = m + m_coefficients[i] * self.messages[i].message
+	def get_random_message(self):
+		if self.messages.size == 0:
+			return
+		n_seen_messages = self.messages.shape[0]
+		rand_coefficients = np.random.randint(0, FIELD_SIZE, n_seen_messages) # One random coefficient for each message I know about
+		message = np.zeros(MESSAGE_LENGTH)
+		for i in range(n_seen_messages):
+			message += self.messages[i] * rand_coefficients[i]
+		message = mod(message)
+		# get actual coefficients
+		coefficients = mod(np.dot(rand_coefficients, self.coefficients))
 		return RLNCMessage(coefficients, message)
-	def decode():
-		pass
+
+	def decode(self):
+		a = self.independent_coeffs
+		b = self.independent_messages
+		solution = np.absolute(mod(np.linalg.solve(a, b)))
+		print solution
 
 class RLNCMessage:
 	def __init__(self, coefficients, message):
+		assert coefficients.shape == (NUM_MESSAGES,)
+		assert message.shape == (MESSAGE_LENGTH, )
 		self.coefficients = coefficients
 		self.message = message
+	def __str__(self):
+		tostr = "coefficients:" + str(self.coefficients) + "message:" + str(self.message)
+		return tostr
 
-"""To show that your S1 and S2 span the same space, you need to show that every linear combination of vectors in S1 is also a linear combination of vectors in S2 and vice versa.
-	Therefore, I know that F^k_q has k standard basis vectors. Show that you can write each one as a combo of the vectors in S1
-"""
+def compute_rank(matrix):
+	return np.linalg.matrix_rank(matrix)
 
-def can_stop_sending():
-	return all([can_decode(node['rlnc']) for node in graph.nodes()])
+def summarize(graph):
+	for node in graph.nodes():
+		rank = graph.node[node]['rlnc'].rank()
+		print "Node %d has rank %d / %d" % (node, rank, NUM_MESSAGES)
+
+def mod(array):
+	return np.mod(array, FIELD_SIZE)
+
+def can_stop_sending(graph):
+	return all([graph.node[node]['rlnc'].can_decode() for node in graph.nodes()])
 
 def generate_complete_graph(n):
 	return nx.complete_graph(n)
@@ -56,37 +93,57 @@ def generate_complete_graph(n):
 def gossip_round(graph, exchange_type=PUSH):
 	for node in graph.nodes():	
 		if exchange_type == BROADCAST:
-			for neighbour in graph.neighbours(node):
-				send_message(node, neighbour)
+			for neighbour in graph.neighbors(node):
+				send_message(node, neighbor)
 		else:
-			random_neighbour = random.choice(graph.neighbours(node))
+			random_neighbor = random.choice(graph.neighbors(node))
 			if exchange_type == PUSH:
-				# Pick a node uniformly at random from the sender's neighbours to receive a message
-				send_message(node, random_neighbour)
+				# Pick a node uniformly at random from the sender's neighbors to receive a message
+				send_message(node, random_neighbor)
 			elif exchange_type == PULL:
-				send_message(random_neighbour, node)
+				send_message(random_neighbor, node)
 			elif exchange_type == EXCHANGE:
-				send_message(random_neighbour, node)
-				send_message(node, random_neighbour)
+				send_message(random_neighbor, node)
+				send_message(node, random_neighbor)
 
 # Send a message from sender to reciever
 def send_message(sender, receiver):
-	message = choose_message_to_send(sender)
-	# send it, whatever that means
-	receiver.receive(message)
+	message = graph.node[sender]['rlnc'].get_random_message()
+	if message is not None:
+		graph.node[receiver]['rlnc'].receive(message)
 
-# Pick something uniformly from the messages that you span: i.e. take random coefficients and lin comb your messages?
-def choose_message_to_send(sender):
-	pass
+# TODO: actually test that you can decode things?
+# TODO: count number of messages sent?
+# TODO: loop for variance
 
 if __name__ == '__main__':
 	# 1) Generate a connected graph
+	print "Generating graph"
 	graph = generate_complete_graph(NUM_NODES)
 	for node in graph.nodes():
-		node['rlnc'] = RLNCNode()
+		graph.node[node]['rlnc'] = RLNCNode(node)
 	# 2) Create the messages
 	messages = [
-		np.array([1, 0, 1, 0, 1, 0])
+		np.array([1, 0,] * 5),
+		np.array([0] * 10),
+		np.array([1] * 9 + [0])
 	]
+	NUM_MESSAGES = len(messages)
+	MESSAGE_LENGTH = len(messages[0])
 	# 3) Distribute the messages
+	standard_basis_vectors = np.identity(NUM_MESSAGES)
+	for i, message in enumerate(messages):
+		graph.node[1]['rlnc'].receive(RLNCMessage(standard_basis_vectors[i], message))
 	# 4) Run gossip until can stop
+	print "Starting protocol"
+	rounds = 0
+	while not can_stop_sending(graph):
+		gossip_round(graph)
+		rounds += 1
+		if (rounds % 10 == 0):
+			summarize(graph)
+		print "It's now round %d" % (rounds)
+	print "It took %d rounds" % (rounds)
+	for node in graph.nodes():
+		graph.node[node]['rlnc'].decode()
+		break
