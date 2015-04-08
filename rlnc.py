@@ -3,7 +3,7 @@ import numpy as np
 import scipy as sp
 import matplotlib.pyplot as plt
 import random
-from scipy.linalg import lu
+import binascii
 
 PUSH = 0
 PULL = 1
@@ -12,29 +12,43 @@ BROADCAST = 3
 
 FIELD_SIZE = 2
 NUM_MESSAGES = 5
-
-# Graph
-# Communication protocol (RLNC)
-# Gossip algorithm
+MESSAGE_LENGTH = 10
+NUM_NODES = 10
 
 class RLNCNode:
 	def __init__(self):
-		self.coefficients = np.array() 
-		self.messages = []
+		self.messages = np.array([0, MESSAGE_LENGTH]) # A matrix where every row is a message
+		self.coefficients = np.array([[0, NUM_MESSAGES]]) # A matrix where every row is coefficients for a message
 
 	def receive(self, message):
-		# Add the coeffs to your matrix I guess? If you ever have k linearly independent equations...
+		np.append(self.coefficients, message.coefficients, axis=0)
+		np.append(self.messages, message.message, axis=0)
+
+	def can_decode():
+		numpy.linalg.matrix_rank(self.coefficients) == NUM_MESSAGES
+
+	def get_random_message():
+		rand_coefficients = np.random.randint(0, FIELD_SIZE, (self.messages.shape[0], 1)) # One random coefficient for each message I know about
+		messsage = np.dot(rand_coefficients, self.messages)
+
+		for i, message in enumerate(self.messages):
+			m_coefficients[i] = numpy.random.randint(0, FIELD_SIZE)
+			m = m + m_coefficients[i] * self.messages[i].message
+		return RLNCMessage(coefficients, message)
+	def decode():
 		pass
+
+class RLNCMessage:
+	def __init__(self, coefficients, message):
+		self.coefficients = coefficients
+		self.message = message
 
 """To show that your S1 and S2 span the same space, you need to show that every linear combination of vectors in S1 is also a linear combination of vectors in S2 and vice versa.
 	Therefore, I know that F^k_q has k standard basis vectors. Show that you can write each one as a combo of the vectors in S1
 """
 
 def can_stop_sending():
-	return all([can_decode(node) for node in graph.nodes()])
-
-def can_decode(matrix):
-	numpy.linalg.matrix_rank(matrix) == NUM_MESSAGES
+	return all([can_decode(node['rlnc']) for node in graph.nodes()])
 
 def generate_complete_graph(n):
 	return nx.complete_graph(n)
@@ -67,6 +81,12 @@ def choose_message_to_send(sender):
 
 if __name__ == '__main__':
 	# 1) Generate a connected graph
+	graph = generate_complete_graph(NUM_NODES)
+	for node in graph.nodes():
+		node['rlnc'] = RLNCNode()
 	# 2) Create the messages
+	messages = [
+		np.array([1, 0, 1, 0, 1, 0])
+	]
 	# 3) Distribute the messages
 	# 4) Run gossip until can stop
