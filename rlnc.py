@@ -2,8 +2,10 @@ from sage.all import *
 import networkx as nx
 import numpy as np
 import scipy as sp
+from scipy import stats
 import matplotlib.pyplot as plt
 import random
+import collections
 
 PUSH = 0
 PULL = 1
@@ -11,12 +13,22 @@ EXCHANGE = 2
 BROADCAST = 3
 
 FIELD_SIZE = 2 # MUST BE A PRIME OR PRIME POWER!
-NUM_NODES = 200
+NUM_NODES = 1000
 NUM_MESSAGES = 10
 MESSAGE_LENGTH = 100
 
+N_TRIALS = 10
+
 COEFF_MATRIX_SPACE = MatrixSpace(GF(FIELD_SIZE), NUM_MESSAGES, NUM_MESSAGES)
 MESSAGE_MATRIX_SPACE = MatrixSpace(GF(FIELD_SIZE), NUM_MESSAGES, MESSAGE_LENGTH)
+
+class RLNCStats:
+	def __init__(self):
+		self.stopping_rounds = []
+	def summarize(self):
+		print sp.stats.describe(np.array(self.stopping_rounds))
+	def update(self, rounds):
+		self.stopping_rounds.append(rounds)
 
 class RLNCNode:
 	def __init__(self, identifier):
@@ -139,40 +151,48 @@ def generate_cycle_graph(n):
 	return nx.cycle_graph(n)
 
 # TODO: random graphs, dynamic graphs
+# TODO: No RLNC, just straight messages (pick a random one)
+# TODO: hot rumours (no stopping correctness guarnetees)
+
+
 			# Edge fault randomly in each round
 if __name__ == '__main__':
-	
-	# 1) Generate a connected graph
-	# TODO: determine graph type
-	print "Generating graph"
-	graph = generate_complete_graph(NUM_NODES)
-	for node in graph.nodes():
-		graph.node[node]['rlnc'] = RLNCNode(node)
+	stats = RLNCStats()
+	for i in range(N_TRIALS):
+		# 1) Generate a connected graph
+		# TODO: determine graph type
+		print "Generating graph"
+		graph = generate_complete_graph(NUM_NODES)
+		for node in graph.nodes():
+			graph.node[node]['rlnc'] = RLNCNode(node)
 
-	# 2) Create the messages
-	print "Generating %d messages of length %d in a field of size %d" % (NUM_MESSAGES, MESSAGE_LENGTH, FIELD_SIZE)
-	messages = MESSAGE_MATRIX_SPACE.random_element()
+		# 2) Create the messages
+		print "Generating %d messages of length %d in a field of size %d" % (NUM_MESSAGES, MESSAGE_LENGTH, FIELD_SIZE)
+		messages = MESSAGE_MATRIX_SPACE.random_element()
 
-	# 3) Distribute the messages
-	standard_basis_vectors = matrix.identity(NUM_MESSAGES)
-	for i, (standard_basis_vector, message) in enumerate(zip(standard_basis_vectors, messages.rows())):
-		# TODO: the starting configuration should determine how things are spread?
-		graph.node[0]['rlnc'].receive(RLNCMessage(standard_basis_vector, message))
-	
-	# 4) Run gossip until can stop
-	print "Starting protocol"
-	rounds = 0
-	while not can_stop_sending(graph):
-		gossip_round(graph)
-		rounds += 1
-		if (rounds % 10 == 0):
-			summarize(graph)
-		print "It's now round %d" % (rounds)
-	print "It took %d rounds" % (rounds)
+		# 3) Distribute the messages
+		standard_basis_vectors = matrix.identity(NUM_MESSAGES)
+		for i, (standard_basis_vector, message) in enumerate(zip(standard_basis_vectors, messages.rows())):
+			# TODO: the starting configuration should determine how things are spread?
+			graph.node[0]['rlnc'].receive(RLNCMessage(standard_basis_vector, message))
+		
+		# 4) Run gossip until can stop
+		print "Starting protocol"
+		rounds = 0
+		while not can_stop_sending(graph):
+			gossip_round(graph)
+			rounds += 1
+			if (rounds % 50 == 0):
+				summarize(graph)
+			print "It's now round %d" % (rounds)
+		print "It took %d rounds" % (rounds)
 
-	# 5) Verify answer
-	for node in graph.nodes():
-		solution = graph.node[node]['rlnc'].decode()
-		verify_solution(solution, messages)
+		# 5) Verify answer
+		for node in graph.nodes():
+			solution = graph.node[node]['rlnc'].decode()
+			verify_solution(solution, messages)
+		print "Solution has been verified!"
 
-	print "Solution has been verified!"
+		# Update stats
+		stats.update(rounds)
+	stats.summarize()
