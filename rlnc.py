@@ -110,7 +110,6 @@ def gossip_round(graph, exchange_type=PUSH):
 				send_message(random_neighbor, node)
 				send_message(node, random_neighbor)
 
-# Send a message from sender to reciever
 def send_message(sender, receiver):
 	message = graph.node[sender]['rlnc'].get_random_message()
 	if message is not None:
@@ -140,6 +139,7 @@ def generate_cycle_graph(n):
 	return nx.cycle_graph(n)
 
 # TODO: random graphs, dynamic graphs
+			# Edge fault randomly in each round
 if __name__ == '__main__':
 	
 	# 1) Generate a connected graph
