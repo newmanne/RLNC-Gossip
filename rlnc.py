@@ -223,28 +223,28 @@ class WorkerThread(threading.Thread):
 
 if __name__ == '__main__':
 	data = []
-	for num_messages in [1, 10, 20, 30, 40, 50]:# + range(50, 250, 50):
-		num_nodes = 500
-		config = {
-			"configuration": {
-				"num_messages": num_messages,
-				"num_nodes": num_nodes,
-				"message_length": MESSAGE_LENGTH,
-				"exchange_type": "PUSH",
-			},
-			"results": []
-		}
-		trials = []
-		lock = threading.Lock()
-		for _ in range(N_TRIALS):
-			gossipper = RLNCGossipper(generate_complete_graph, num_nodes, num_messages)
-			t = WorkerThread(gossipper, config, lock)
-			trials.append(t)
-			t.start()
-		print "jobs launched"
-		for t in trials:
-			t.join()
-		data.append(config)
+	for num_messages in [10]:
+		for num_nodes in [10, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]:
+			config = {
+				"configuration": {
+					"num_messages": num_messages,
+					"num_nodes": num_nodes,
+					"message_length": MESSAGE_LENGTH,
+					"exchange_type": "PUSH",
+				},
+				"results": []
+			}
+			trials = []
+			lock = threading.Lock()
+			for _ in range(N_TRIALS):
+				gossipper = RLNCGossipper(generate_complete_graph, num_nodes, num_messages)
+				t = WorkerThread(gossipper, config, lock)
+				trials.append(t)
+				t.start()
+			print "jobs launched"
+			for t in trials:
+				t.join()
+			data.append(config)
 	with open('results.txt', 'w') as results:
 		results.write(json.dumps(data))
 	print "goodbye"
