@@ -104,26 +104,17 @@ class RLNCMessage:
 	def __str__(self):
 		return "coefficients:" + str(self.coefficients) + "message:" + str(self.message)
 
-class RLNCGossipper():
-	def __init__(self, graph_generator, num_nodes, num_messages, verify=True):
-		self.verify = verify
+class BaseGossipper():
+	def __init__(self, graph_generator, num_nodes, num_messages, verify=False):
 		self.num_nodes = num_nodes
 		self.num_messages = num_messages
 		self.round = 0
-
-		# Generate graph
 		self.graph = graph_generator(num_nodes)
-		for node in self.graph.nodes():
-			self.graph.node[node]['rlnc'] = RLNCNode(node, self)
+		self.verify = verify
 
 		# Generate msesages
 		self.matrix_space = MatrixSpace(GF(FIELD_SIZE), num_messages, MESSAGE_LENGTH)
 		self.messages = self.matrix_space.random_element()
-
-		# Assign messages
-		standard_basis_vectors = matrix.identity(self.num_messages)
-		for i, (standard_basis_vector, message) in enumerate(zip(standard_basis_vectors, self.messages.rows())):
-			self.graph.node[0]['rlnc'].receive(RLNCMessage(standard_basis_vector, message))
 
 	def gossip(self, exchange_type=PUSH):
 		print "Starting protocol"
@@ -160,13 +151,68 @@ class RLNCGossipper():
 			"nodes": node_info
 		}
 
+	def can_stop_sending(self):
+		return all([node.can_decode() for node in self.get_nodes()])
+
+class RLNCGossipper(BaseGossipper):
+	def __init__(self, graph_generator, num_nodes, num_messages, verify=True):
+		BaseGossipper.__init__(self, graph_generator, num_nodes, num_messages, verify)
+
+		for node in self.graph.nodes():
+			self.graph.node[node]['rlnc'] = RLNCNode(node, self)
+
+		# Assign messages
+		standard_basis_vectors = matrix.identity(self.num_messages)
+		for i, (standard_basis_vector, message) in enumerate(zip(standard_basis_vectors, self.messages.rows())):
+			self.graph.node[0]['rlnc'].receive(RLNCMessage(standard_basis_vector, message))
+
 	def summarize(self):
 		for node in self.get_nodes():
 			rank = node.rank()
 			print "Node %d has rank %d / %d" % (node.identifier, rank, self.num_messages)
 
-	def can_stop_sending(self):
-		return all([self.graph.node[node]['rlnc'].can_decode() for node in self.graph.nodes()])
+class SimpleGossipper(BaseGossipper):
+	def __init__(self, graph_generator, num_nodes, num_messages):
+		BaseGossipper.__init__(self, graph_generator, num_nodes, num_messages, False)
+		for node in self.graph.nodes():
+			self.graph.node[node]['rlnc'] = SimpleGossipperNode(node, self)
+
+		self.messsages = map(tuple, self.messages)
+
+		# Assign messages
+		for message in self.messages:
+			self.graph.node[0]['rlnc'].receive(message)
+
+	def summarize(self):
+		pass
+
+class SimpleGossipperNode():
+	def __init__(self, identifier, gossipper):
+		self.messages = []
+		self.identifier = identifier
+		self.gossipper = gossipper
+		self.stopping_round = 999999
+		self.extra_messages = 0
+
+	def receive(self, message):
+		if message in self.messages:
+			self.extra_messages += 1
+		else:
+			self.messages.append(message)
+			if self.can_decode():
+				self.stopping_round = self.get_current_round()
+
+	def get_random_message(self):
+		return random.choice(self.messages) if len(self.messages) > 0 else None
+
+	def can_decode(self):
+		return len(self.messages) == self.get_num_messages()
+
+	def get_num_messages(self):
+		return self.gossipper.num_messages
+
+	def get_current_round(self):
+		return self.gossipper.round
 
 def gossip_round(graph, exchange_type):
 	for node in graph.nodes():	
@@ -223,8 +269,8 @@ class WorkerThread(threading.Thread):
 
 if __name__ == '__main__':
 	data = []
-	for num_messages in [10]:
-		for num_nodes in [10, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]:
+	for num_messages in [1, 10, 20, 30, 40, 50]:
+		for num_nodes in [500]:
 			config = {
 				"configuration": {
 					"num_messages": num_messages,
@@ -237,7 +283,8 @@ if __name__ == '__main__':
 			trials = []
 			lock = threading.Lock()
 			for _ in range(N_TRIALS):
-				gossipper = RLNCGossipper(generate_complete_graph, num_nodes, num_messages)
+				gossipper = SimpleGossipper(generate_complete_graph, num_nodes, num_messages)
+				# gossipper = RLNCGossipper(generate_complete_graph, num_nodes, num_messages)
 				t = WorkerThread(gossipper, config, lock)
 				trials.append(t)
 				t.start()
@@ -248,3 +295,5 @@ if __name__ == '__main__':
 	with open('results.txt', 'w') as results:
 		results.write(json.dumps(data))
 	print "goodbye"
+
+# How to do random edge faults? Graph.tick() -> 

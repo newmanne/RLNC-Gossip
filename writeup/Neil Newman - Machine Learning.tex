@@ -36,16 +36,16 @@ Vancouver, BC V6T 1Z4 \\
 
 \section{Introduction}
 \paragraph{Gossip Protocols}
-Gossip protocols are randomized algorithms used to spread information, namely a set of messages, within a network. Gossip protocols are modelled on the way that rumours spread among a society or the way in which a disease outbreak spreads throughout a population (gossip protocols are sometimes referred to as epidemic protocols). Initially, information is spread throughout the network (each node may know none, part, or all of the information), and the goal is to make every node in the network know all of the information. The protocol achieves this through a series of pairwise interactions between nodes in which knowledge is exchanged. In contrast to non-randomized algorithms, gossip algorithms do not take the structure of the network into account. This fact makes gossip protocols suitable for use in real networks, in which communication links can fail and network topologies can evolve over time. In contrast, a non-randomized approach, such a constructing a spanning tree, would require a known and stable network. 
+Gossip protocols are randomized algorithms used to spread information, namely a set of messages, within a network. Gossip protocols are modeled on the way that rumours spread among a society or the way in which a disease outbreak spreads throughout a population (gossip protocols are sometimes referred to as epidemic protocols). Initially, information is spread throughout the network (each node may know none, part, or all of the information), and the goal is to make every node in the network know all of the information. The protocol achieves this through a series of pairwise interactions between nodes in which knowledge is exchanged. In contrast to non-randomized algorithms, gossip algorithms do not take the structure of the network into account. This fact makes gossip protocols suitable for use in real networks, in which communication links can fail and network topologies can evolve over time. In contrast, a non-randomized approach, such a constructing a spanning tree, would require a known and stable network. 
 
 \paragraph{Random Linear Network Coding}
 One issue with gossip protocols is that if the goal is to spread multiple messages in parallel, a node need to choose which information it sends in each interaction without knowledge of what the other node knows or does not know (acquiring this knowledge would be expensive, as would be sending all of the information that it knows). If the node were to simply choose a random message that it knew about, it is possible for some messages to become widely spread while others remain rare, so that the stopping time for the algorithm, (the point at which every node knows all of the messages) could be dominated by the time it takes to propogate the rare messages. This can be circumvented by using gossip protocol based on \emph{Random Linear Network Coding} (RLNC). In this protocol, discussed in more detail in \ref{subsec:RLNC}, a node sends a message that is a random linear combination of the messages that it knows. The original messages can be recovered using Gaussian elimination once a node has received enough linearly independent coefficient vectors--however, it should be noted that until this time, it is possible that the node will not be able to decode any of the individual messages (i.e. it can be all or nothing).
 
 \paragraph{Rumor Mongering}
-Rumor mongering is another method of distributing information. When a node receives a message, the message is a \textit{hot rumor}. As long as the rumor is hot, the node will periodically connect with another random node and see if it knows about the rumor. If the node tries to share a rumor and the other node already knows about it, then the rumor cools off. Eventually, the node stops propogating the rumor entirely. 
+Rumor mongering is another method of distributing information. When a node receives a message, the message is a \textit{hot rumor}. As long as the rumor is hot, the node will periodically connect with another random node and see if it knows about the rumor. If the node tries to share a rumor and the other node already knows about it, then the rumor cools off. Eventually, the node stops propagating the rumor entirely. 
 
 \paragraph{Anti-entropy}
-A node chooses another node at random and performs a complete exchange of knowledge. This is prohibitively expensive, but can be used occasionally to guarentee eventual consistency.
+A node chooses another node at random and performs a complete exchange of knowledge. This is prohibitively expensive, but can be used occasionally to guarantee eventual consistency.
 
 \paragraph{Applications}
 Gossip protocols can be applied to database replication as demonstrated in \cite{demers1987epidemic}. 
@@ -82,20 +82,20 @@ We consider the following starting conditions:
 \subsection{Graph types}
 \begin{itemize}
 \item \texttt{COMPLETE} Every node is connected to every other node
-\item \texttt{ADVERSERIAL} An adversary gets to choose the set of edges at every time \graphtime (subject to the constraint that \graph must remain connected). For example, if there is only a single message to distribute, an adversary might choose to only put a single link between the set of nodes that know the message and the set of nodes that don't know the message. 
+\item \texttt{ADVERSARIAL} An adversary gets to choose the set of edges at every time \graphtime (subject to the constraint that \graph must remain connected). For example, if there is only a single message to distribute, an adversary might choose to only put a single link between the set of nodes that know the message and the set of nodes that don't know the message. 
 \end{itemize}
 
 \subsection{RLNC Algorithm}\label{subsec:RLNC}
 \paragraph{Preliminaries}
-Packets are vectors over a finite field $\mathbb{F}_{\fieldSize}$, where the size of the field, \fieldSize, is a prime or prime power. There are \numMessages messages, $\vec{m_{1}}...\vec{m_{\numMessages}}$ that are vectors from $\mathbb{F}_{\fieldSize}^{l}$. Packets are of the form ($\vec{\mu}, \vec{m}$), where $\vec{m} = \sum_{i=1}^{\numMessages} \mu_i\vec{m_i} \in \mathbb{F}_{\fieldSize}^{l}$ and $\vec{\mu} = (\mu_1,...,\mu_k) \in \mathbb{F}_{\fieldSize}^{\numMessages}$ is the coefficient vector. Note that if a node ever knows enough coefficient vectors such that the span of these vectors equals $\mathbb{F}_{\fieldSize}^{\numMessages}$ then Gaussian elimination can be used to reconstruct all of the messages. Therefore, a minium of \numMessages packets with linearly independent coefficients are needed. The choice of \fieldSize is a tradeoff between the size of messages in bytes and the convergence rate. 
+Packets are vectors over a finite field $\mathbb{F}_{\fieldSize}$, where the size of the field, \fieldSize, is a prime or prime power. There are \numMessages messages, $\vec{m_{1}}...\vec{m_{\numMessages}}$ that are vectors from $\mathbb{F}_{\fieldSize}^{l}$. Packets are of the form ($\vec{\mu}, \vec{m}$), where $\vec{m} = \sum_{i=1}^{\numMessages} \mu_i\vec{m_i} \in \mathbb{F}_{\fieldSize}^{l}$ and $\vec{\mu} = (\mu_1,...,\mu_k) \in \mathbb{F}_{\fieldSize}^{\numMessages}$ is the coefficient vector. Note that if a node ever knows enough coefficient vectors such that the span of these vectors equals $\mathbb{F}_{\fieldSize}^{\numMessages}$ then Gaussian elimination can be used to reconstruct all of the messages. Therefore, a minimum of \numMessages packets with linearly independent coefficients are needed. The choice of \fieldSize is a trade-off between the size of messages in bytes and the convergence rate. 
 \paragraph{Algorithm}
 Every node \textit{v} keeps a subspace $X_v$ that is the span of all of the coefficient vectors it currently knows. When a packet needs to be chosen to send, a node chooses a packet uniformly at random from $X_v$. When a packet is received, $X_v$ is recomputed. If $X_v = \mathbb{F}_{\fieldSize}^{\numMessages}$ then a node can decode messages. When this is true for every node, the algorithm is considered to have stopped. 
 \paragraph{Practical Details}
-Every node maintains only messages that are \textit{helpful}, that is, messaages that increase the dimensionality of $Y_v$. Each node maintains a matrix of helpful coefficients. To determine whether or not a new message contains helpful coefficients, we compute the rank of the current matrix and the rank of the current matrix with an addtional row for the message's coefficients. If the rank has increased, the message is helpful and we add it to the node's collection. Otherwise, the message is ignored. When the rank of the coefficient matrix is equal to the number of messages, a node can decode all of the messages. When this condition is true for every node, we say that the algorithm has terminated.
+Every node maintains only messages that are \textit{helpful}, that is, messages that increase the dimensionality of $Y_v$. Each node maintains a matrix of helpful coefficients. To determine whether or not a new message contains helpful coefficients, we compute the rank of the current matrix and the rank of the current matrix with an additional row for the message's coefficients. If the rank has increased, the message is helpful and we add it to the node's collection. Otherwise, the message is ignored. When the rank of the coefficient matrix is equal to the number of messages, a node can decode all of the messages. When this condition is true for every node, we say that the algorithm has terminated.
 
 \subsection{Summary of theoretical results}
 \paragraph{Complete graphs}
-On a complete graph, RLNC gossip acheives $O(\numMessages + T)$, where $T$ is the time that it takes to distribute a single message amongst all of the nodes. This is referred to as \textit{perfect pipelining}. In a complete graph, $T$ is $O(\log{n})$.
+On a complete graph, RLNC gossip achieves $O(\numMessages + T)$, where $T$ is the time that it takes to distribute a single message amongst all of the nodes. This is referred to as \textit{perfect pipelining}. In a complete graph, $T$ is $O(\log{n})$. 
 
 \subsection{Practical details}
 Experiments were performed using \textit{python} and \textit{sage}. The \textit{networkx} library was used to generate graphs.
@@ -103,15 +103,30 @@ Experiments were performed using \textit{python} and \textit{sage}. The \textit{
 \subsection{Results}
 \begin{figure}
 \centering
-\missingfigure{Runtimes}
-\label{fig:runtimes}
+\includegraphics[width=\linewidth]{figures/rlnc-ecdf.png}
+\caption{Cumulative distribution showing what fraction of nodes can decode the messages at any given round. 5 trials were performed using 500 nodes and 50 messages.}
+\label{fig:rlnc-ecdf}
 \end{figure} 
+\begin{figure}
+\centering
+\includegraphics[width=\linewidth]{figures/rlnc-vary-k.png}
+\caption{The number of rounds that it takes for the algorithm to terminate is linear in the number in the number of messages}
+\label{fig:rlnc-vary-k}
+\end{figure} 
+\begin{figure}
+\centering
+\includegraphics[width=\linewidth]{figures/rlnc-vary-n.png}
+\caption{The number of rounds that it takes for the algorithm to terminate is logarithmic in the number of nodes}
+\label{fig:rlnc-vary-n}
+\end{figure} 
+
 
 \subsection{Discussion}
 
 \subsection{Conclusions}
 
 \nocite{*}
+\bibliographystyle{ieeetr}
 \bibliography{nips}
 
 
