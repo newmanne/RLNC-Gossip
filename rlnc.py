@@ -155,7 +155,7 @@ class BaseGossipper():
 		return all([node.can_decode() for node in self.get_nodes()])
 
 class RLNCGossipper(BaseGossipper):
-	def __init__(self, graph_generator, num_nodes, num_messages, verify=True):
+	def __init__(self, graph_generator, num_nodes, num_messages, verify=True, mix=False):
 		BaseGossipper.__init__(self, graph_generator, num_nodes, num_messages, verify)
 
 		for node in self.graph.nodes():
@@ -164,7 +164,7 @@ class RLNCGossipper(BaseGossipper):
 		# Assign messages
 		standard_basis_vectors = matrix.identity(self.num_messages)
 		for i, (standard_basis_vector, message) in enumerate(zip(standard_basis_vectors, self.messages.rows())):
-			self.graph.node[0]['rlnc'].receive(RLNCMessage(standard_basis_vector, message))
+			self.graph.node[i if mix else 0]['rlnc'].receive(RLNCMessage(standard_basis_vector, message))
 
 	def summarize(self):
 		for node in self.get_nodes():
@@ -249,19 +249,19 @@ def generate_path_graph(n):
 	return nx.path_graph(n)
 
 # TODO: random graphs, dynamic graphs
-# TODO: No RLNC, just straight messages (pick a random one)
 # TODO: hot rumours (no stopping correctness guarnetees)
-# Edge fault randomly in each round
+# Edge fault randomly in each round - this never seemed easy enough to define...
 
 class WorkerThread(threading.Thread):
-	def __init__(self, gossipper, config, lock):
+	def __init__(self, gossipper, config, lock, exchange_type):
 		threading.Thread.__init__(self)
+		self.exchange_type = exchange_type
 		self.gossipper = gossipper
 		self.config = config
 		self.lock = lock
 
 	def run(self):
-		self.gossipper.gossip()	
+		self.gossipper.gossip(self.exchange_type)	
 		info = self.gossipper.round_info()
 		self.lock.acquire()
 		self.config["results"].append(info)
@@ -269,29 +269,30 @@ class WorkerThread(threading.Thread):
 
 if __name__ == '__main__':
 	data = []
-	for num_messages in [1, 10, 20, 30, 40, 50]:
-		for num_nodes in [500]:
-			config = {
-				"configuration": {
-					"num_messages": num_messages,
-					"num_nodes": num_nodes,
-					"message_length": MESSAGE_LENGTH,
-					"exchange_type": "PUSH",
-				},
-				"results": []
-			}
-			trials = []
-			lock = threading.Lock()
-			for _ in range(N_TRIALS):
-				gossipper = SimpleGossipper(generate_complete_graph, num_nodes, num_messages)
-				# gossipper = RLNCGossipper(generate_complete_graph, num_nodes, num_messages)
-				t = WorkerThread(gossipper, config, lock)
-				trials.append(t)
-				t.start()
-			print "jobs launched"
-			for t in trials:
-				t.join()
-			data.append(config)
+	for exchange_type in ["PULL"]:
+		for num_messages in [1, 10, 20, 30, 40, 50]:
+			for num_nodes in [500]:
+				config = {
+					"configuration": {
+						"num_messages": num_messages,
+						"num_nodes": num_nodes,
+						"message_length": MESSAGE_LENGTH,
+						"exchange_type": exchange_type,
+					},
+					"results": []
+				}
+				trials = []
+				lock = threading.Lock()
+				for _ in range(N_TRIALS):
+					# gossipper = SimpleGossipper(generate_complete_graph, num_nodes, num_messages)
+					gossipper = RLNCGossipper(generate_complete_graph, num_nodes, num_messages, mix=True)
+					t = WorkerThread(gossipper, config, lock, exchange_type)
+					trials.append(t)
+					t.start()
+				print "jobs launched"
+				for t in trials:
+					t.join()
+				data.append(config)
 	with open('results.txt', 'w') as results:
 		results.write(json.dumps(data))
 	print "goodbye"
