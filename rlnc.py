@@ -270,8 +270,10 @@ class WorkerThread(threading.Thread):
 if __name__ == '__main__':
 	data = []
 	for exchange_type in ["PULL"]:
-		for num_messages in [1, 10, 20, 30, 40, 50]:
-			for num_nodes in [500]:
+		for num_messages in [10]:
+		# for num_messages in [1, 10, 20, 30, 40, 50]:
+			# for num_nodes in [500]:
+			for num_nodes in [10] + range(100, 1100, 100):
 				config = {
 					"configuration": {
 						"num_messages": num_messages,
@@ -284,8 +286,8 @@ if __name__ == '__main__':
 				trials = []
 				lock = threading.Lock()
 				for _ in range(N_TRIALS):
-					# gossipper = SimpleGossipper(generate_complete_graph, num_nodes, num_messages)
-					gossipper = RLNCGossipper(generate_complete_graph, num_nodes, num_messages, mix=True)
+					gossipper = SimpleGossipper(generate_complete_graph, num_nodes, num_messages)
+					# gossipper = RLNCGossipper(generate_complete_graph, num_nodes, num_messages)
 					t = WorkerThread(gossipper, config, lock, exchange_type)
 					trials.append(t)
 					t.start()
